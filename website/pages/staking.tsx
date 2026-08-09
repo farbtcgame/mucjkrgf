@@ -58,7 +58,7 @@ export default function StakingPage() {
             STAKE
           </span>
           <h3 className="relative text-xl md:text-2xl font-extrabold text-black tracking-tight">
-            MINI Vault / 99.9% APY
+            MINI Vault / 33.9% WYR
           </h3>
           <p className="relative text-xs md:text-sm text-black/70 mt-1 max-w-md">
             Collect, stake, and let the protocol do the accounting.
