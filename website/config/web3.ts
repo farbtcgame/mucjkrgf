@@ -40,9 +40,9 @@ export const WEB3_CONFIG: Web3Config = {
   ...ACTIVE_CHAIN,
   // Fill this in after `npm run deploy:testnet` / `deploy:mainnet` in /hardhat.
   NFT_CONTRACT_ADDRESS:
-    process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || "0x6a25D7E96256e7317925845dF639862865D1d6AB",
+    process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || "0xA071a23aC8dbDD1e679828F837Bc66E1362694f6",
   // Fixed mint payment token, as specified.
-  MINT_TOKEN_ADDRESS: "0x042D4d8EA50d5b812A93291f40Ee7ad8d8BeD274",
+  MINT_TOKEN_ADDRESS: "0xe934e36a439c94017b64a3fece66af12099abf50",
 };
 
 // ==========================================
