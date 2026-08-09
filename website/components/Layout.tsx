@@ -19,7 +19,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A0B0D] text-zinc-200 font-mono flex flex-col md:flex-row antialiased">
+    <div className="min-h-screen bg-[#0B0D0F] text-zinc-200 font-mono flex flex-col md:flex-row antialiased">
       {/* Mobile Header Bar */}
       <div className="md:hidden flex items-center justify-between p-4 bg-[#0f1115] border-b border-zinc-800">
         <div className="flex items-center space-x-2">
@@ -36,7 +36,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-[#0A0B0D]/95 backdrop-blur-md flex flex-col p-6 space-y-6">
+        <div className="md:hidden fixed inset-0 z-50 bg-[#0B0D0F]/95 backdrop-blur-md flex flex-col p-6 space-y-6">
           <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
             <span className="font-bold text-white tracking-wider">TERMINAL MENU</span>
             <button onClick={() => setMobileMenuOpen(false)} className="text-zinc-400 text-xl">✕</button>
