@@ -14,6 +14,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navLinks = [
     { label: 'MINT', path: '/mint' },
     { label: 'STAKING', path: '/staking' },
+    { label: 'BURN LAB', path: '/burn' },
     { label: 'ADMIN', path: '/admin/overview' },
   ];
 
