@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-[#0A0B0D] text-zinc-200 antialiased font-mono;
+    @apply bg-[#0B0D0F] text-zinc-200 antialiased font-mono;
   }
 }
 
@@ -15,7 +15,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0b0d;
+  background: #0b0d0f;
 }
 
 ::-webkit-scrollbar-thumb {
