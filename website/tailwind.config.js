@@ -10,7 +10,7 @@ module.exports = {
       colors: {
         neon: "#CCFF00",
         terminal: {
-          bg: "#0A0B0D",
+          bg: "#0B0D0F",
           card: "#0f1115",
           border: "#27272a",
         },
