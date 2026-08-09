@@ -49,7 +49,7 @@ export function initAppKit() {
     metadata: {
       name: "MINI BROKERS",
       description: "Mini Brokers NFT Mint Terminal",
-      url: typeof window !== "undefined" ? window.location.origin : "https://minibrokers.xyz",
+      url: typeof window !== "undefined" ? window.location.origin : "https://www.minibrokers.cash",
       icons: ["/favicon.ico"],
     },
     features: {
