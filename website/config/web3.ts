@@ -40,9 +40,9 @@ export const WEB3_CONFIG: Web3Config = {
   ...ACTIVE_CHAIN,
   // Fill this in after `npm run deploy:testnet` / `deploy:mainnet` in /hardhat.
   NFT_CONTRACT_ADDRESS:
-    process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000",
+    process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || "0x6a25D7E96256e7317925845dF639862865D1d6AB",
   // Fixed mint payment token, as specified.
-  MINT_TOKEN_ADDRESS: "0xe934e36a439c94017b64a3fece66af12099abf50",
+  MINT_TOKEN_ADDRESS: "0x042D4d8EA50d5b812A93291f40Ee7ad8d8BeD274",
 };
 
 // ==========================================
@@ -62,3 +62,16 @@ export const STONKBROKER_BUY_URL =
 // IPFS gateway used for the rotating preview-card images on the mint page
 // ==========================================
 export const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY || "https://ipfs.io/ipfs/";
+
+// ==========================================
+// Alchemy — used by the Staking page to look up which Mini Brokers NFTs
+// the connected wallet owns (Alchemy NFT API: getNFTsForOwner).
+// Get a free API key at https://dashboard.alchemy.com
+// ==========================================
+export const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+
+// Alchemy's NFT API base URL, per network. Robinhood Chain is supported by
+// Alchemy under the "robinhood-mainnet" / "robinhood-testnet" subdomains.
+export const ALCHEMY_NFT_API_BASE = USE_MAINNET
+  ? `https://robinhood-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`
+  : `https://robinhood-testnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
