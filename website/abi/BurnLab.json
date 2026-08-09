@@ -1,0 +1,66 @@
+[
+  { "inputs": [], "name": "owner", "outputs": [{ "type": "address" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "nftContract", "outputs": [{ "type": "address" }], "stateMutability": "view", "type": "function" },
+
+  { "inputs": [], "name": "getRewardsCount", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "totalHeld", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  {
+    "inputs": [{ "name": "index", "type": "uint256" }],
+    "name": "getReward",
+    "outputs": [
+      {
+        "type": "tuple",
+        "components": [
+          { "name": "token", "type": "address" },
+          { "name": "amountPerNFT", "type": "uint256" },
+          { "name": "active", "type": "bool" },
+          { "name": "totalLoaded", "type": "uint256" },
+          { "name": "totalDistributed", "type": "uint256" }
+        ]
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "token", "type": "address" }],
+    "name": "getRewardByToken",
+    "outputs": [
+      {
+        "type": "tuple",
+        "components": [
+          { "name": "token", "type": "address" },
+          { "name": "amountPerNFT", "type": "uint256" },
+          { "name": "active", "type": "bool" },
+          { "name": "totalLoaded", "type": "uint256" },
+          { "name": "totalDistributed", "type": "uint256" }
+        ]
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  { "inputs": [{ "name": "token", "type": "address" }], "name": "getAvailableCapacity", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "name": "token", "type": "address" }], "name": "getRewardTokenBalance", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "type": "uint256" }], "name": "isHeld", "outputs": [{ "type": "bool" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "type": "uint256" }], "name": "depositorOf", "outputs": [{ "type": "address" }], "stateMutability": "view", "type": "function" },
+
+  { "inputs": [{ "name": "token", "type": "address" }, { "name": "amountPerNFT", "type": "uint256" }], "name": "addRewardToken", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [{ "name": "token", "type": "address" }, { "name": "newAmountPerNFT", "type": "uint256" }], "name": "updateRewardAmount", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [{ "name": "token", "type": "address" }, { "name": "active", "type": "bool" }], "name": "setRewardActive", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [{ "name": "token", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "loadRewardTokens", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [{ "name": "token", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "withdrawRewardTokens", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+
+  { "inputs": [{ "name": "nftContractAddress", "type": "address" }, { "name": "tokenId", "type": "uint256" }, { "name": "recipient", "type": "address" }], "name": "recoverNFT", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+
+  { "inputs": [{ "name": "tokenIds", "type": "uint256[]" }], "name": "burn", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "token", "type": "address" }, { "indexed": false, "name": "amountPerNFT", "type": "uint256" }], "name": "RewardConfigured", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "token", "type": "address" }, { "indexed": false, "name": "oldAmountPerNFT", "type": "uint256" }, { "indexed": false, "name": "newAmountPerNFT", "type": "uint256" }], "name": "RewardUpdated", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "token", "type": "address" }, { "indexed": false, "name": "active", "type": "bool" }], "name": "RewardEnabled", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "token", "type": "address" }, { "indexed": true, "name": "from", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }], "name": "RewardTokensLoaded", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "token", "type": "address" }, { "indexed": true, "name": "to", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }], "name": "RewardTokensWithdrawn", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "from", "type": "address" }, { "indexed": true, "name": "tokenId", "type": "uint256" }], "name": "NFTDeposited", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "nftContractAddress", "type": "address" }, { "indexed": true, "name": "tokenId", "type": "uint256" }, { "indexed": true, "name": "recipient", "type": "address" }], "name": "NFTRecovered", "type": "event" },
+  { "anonymous": false, "inputs": [{ "indexed": true, "name": "user", "type": "address" }, { "indexed": false, "name": "tokenIds", "type": "uint256[]" }], "name": "BurnExecuted", "type": "event" }
+]
