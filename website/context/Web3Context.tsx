@@ -21,40 +21,87 @@ import {
 } from "../lib/wallet";
 
 // ==========================================================
-// Wallet modal icon — prefers a live EIP-6963 icon (announced by the
-// installed extension itself) and falls back to the catalog's static
-// logoUrl, and finally to the existing colored-initials box if neither
-// image loads.
+// Wallet modal icon.
 //
-// Every logo sits in the SAME fixed 36x36 white square, filled edge-to-edge
-// with object-cover, so MetaMask/Rabby/Coinbase/etc all render at an
-// identical visual size — regardless of the source image's own native
-// resolution or internal padding (which is what caused some logos to look
-// bigger/smaller than others before).
+// Priority order:
+//   1. A LIVE icon announced by an installed extension itself (EIP-6963
+//      info.icon) — this is the real, official logo, straight from the
+//      wallet, so it's always preferred when available.
+//   2. A hand-drawn glyph below. These all share the same 20x20 viewBox
+//      and sit centered in the same 36x36 colored box, so — unlike
+//      favicons pulled from each wallet's website (which come in wildly
+//      different native resolutions and internal padding, making some
+//      look tiny and others fill the whole box) — every fallback icon is
+//      now guaranteed to render at the exact same visual size.
+//   3. Plain initials, for wallets with no glyph defined (e.g. the
+//      generic "Browser Wallet" entry).
 // ==========================================================
-const WalletLogo: React.FC<{ option: WalletOption; src?: string }> = ({ option, src }) => {
-  const [imgFailed, setImgFailed] = useState(false);
+const WALLET_GLYPHS: Record<string, React.ReactNode> = {
+  metamask: (
+    <svg viewBox="0 0 20 20" className="w-5 h-5" fill="white">
+      <path d="M10 2.5 5.5 6l1 3.3L10 11l3.5-1.7 1-3.3L10 2.5Z" opacity="0.95" />
+      <path d="M3 8l2.5-2 1 3.5-1.8 4.3L3 12.3 3 8Z" opacity="0.8" />
+      <path d="M17 8l-2.5-2-1 3.5 1.8 4.3 2.7-1.5L17 8Z" opacity="0.8" />
+      <path d="M6.7 13.8 10 17.5l3.3-3.7-3.3-1.6-3.3 1.6Z" opacity="0.95" />
+    </svg>
+  ),
+  rabby: (
+    <svg viewBox="0 0 20 20" className="w-5 h-5" fill="none" stroke="white" strokeWidth="1.7" strokeLinecap="round">
+      <path d="M7 2.5c-1 2-1.2 4.2-.3 6.2M13 2.5c1 2 1.2 4.2.3 6.2" />
+      <circle cx="10" cy="12.5" r="5.3" fill="white" stroke="none" />
+    </svg>
+  ),
+  coinbase: (
+    <svg viewBox="0 0 20 20" className="w-5 h-5">
+      <circle cx="10" cy="10" r="8" fill="none" stroke="white" strokeWidth="2.6" />
+      <rect x="7.3" y="8.4" width="5.4" height="3.2" rx="1.2" fill="white" />
+    </svg>
+  ),
+  rainbow: (
+    <svg viewBox="0 0 20 20" className="w-5 h-5" fill="none" strokeLinecap="round">
+      <path d="M3 14a7 7 0 0 1 14 0" stroke="white" strokeWidth="1.8" />
+      <path d="M6 14a4 4 0 0 1 8 0" stroke="white" strokeWidth="1.8" opacity="0.65" />
+      <circle cx="10" cy="14" r="1.4" fill="white" />
+    </svg>
+  ),
+  trust: (
+    <svg viewBox="0 0 20 20" className="w-5 h-5" fill="white">
+      <path d="M10 2.2 16 4.6v5.1c0 4.3-2.8 6.9-6 8.1-3.2-1.2-6-3.8-6-8.1V4.6L10 2.2Z" />
+    </svg>
+  ),
+  walletconnect: (
+    <svg viewBox="0 0 20 20" className="w-5 h-5" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+      <path d="M5.5 9.3c2.5-3 6.5-3 9 0" />
+      <path d="M4 11.3l1.4-1.4M16 11.3l-1.4-1.4" />
+    </svg>
+  ),
+};
 
-  if (!src || imgFailed) {
+const WalletLogo: React.FC<{ option: WalletOption; liveIconSrc?: string }> = ({ option, liveIconSrc }) => {
+  const [liveIconFailed, setLiveIconFailed] = useState(false);
+
+  if (liveIconSrc && !liveIconFailed) {
     return (
-      <span
-        className="h-9 w-9 flex items-center justify-center text-[11px] font-bold text-white shrink-0 rounded-md overflow-hidden"
-        style={{ backgroundColor: option.accentColor }}
-      >
-        {option.initials}
+      <span className="h-9 w-9 flex items-center justify-center shrink-0 rounded-md overflow-hidden bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={liveIconSrc}
+          alt={option.name}
+          className="w-full h-full object-contain"
+          onError={() => setLiveIconFailed(true)}
+        />
       </span>
     );
   }
 
+  const glyph = WALLET_GLYPHS[option.id];
+
   return (
-    <span className="h-9 w-9 flex items-center justify-center shrink-0 rounded-md overflow-hidden bg-white">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={option.name}
-        className="w-full h-full object-cover"
-        onError={() => setImgFailed(true)}
-      />
+    <span
+      className="h-9 w-9 flex items-center justify-center shrink-0 rounded-md overflow-hidden text-[11px] font-bold text-white"
+      style={{ backgroundColor: option.accentColor }}
+    >
+      {glyph ?? option.initials}
     </span>
   );
 };
@@ -980,7 +1027,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
                     >
                       <WalletLogo
                         option={option}
-                        src={(option.rdns && injectedWalletIcons[option.rdns]) || option.logoUrl}
+                        liveIconSrc={option.rdns ? injectedWalletIcons[option.rdns] : undefined}
                       />
                       <span className="flex-1 min-w-0">
                         <span className="block text-xs font-bold text-white tracking-wide">
