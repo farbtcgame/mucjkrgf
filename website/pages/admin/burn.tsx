@@ -14,7 +14,6 @@ export default function AdminBurnLab() {
     burnLabOwnerAddress,
     burnRewards,
     burnRewardsLoading,
-    heldNftCount,
     txState,
     errorMessage,
     addBurnReward,
@@ -22,7 +21,6 @@ export default function AdminBurnLab() {
     setBurnRewardActive,
     loadBurnRewardTokens,
     withdrawBurnRewardTokens,
-    recoverBurnNFT,
     readErc20Meta,
   } = useWeb3();
 
@@ -36,10 +34,6 @@ export default function AdminBurnLab() {
   const [updateAmounts, setUpdateAmounts] = useState<Record<string, string>>({});
   const [loadAmounts, setLoadAmounts] = useState<Record<string, string>>({});
   const [withdrawAmounts, setWithdrawAmounts] = useState<Record<string, string>>({});
-
-  // NFT recovery form
-  const [recoverTokenId, setRecoverTokenId] = useState("");
-  const [recoverRecipient, setRecoverRecipient] = useState("");
 
   const previewNewToken = async () => {
     if (!ethers.isAddress(newTokenAddress)) return;
@@ -82,15 +76,6 @@ export default function AdminBurnLab() {
     await withdrawBurnRewardTokens(token, raw);
   };
 
-  const submitRecoverNFT = async () => {
-    if (!recoverTokenId || !ethers.isAddress(recoverRecipient)) return;
-    const ok = await recoverBurnNFT(recoverTokenId, recoverRecipient);
-    if (ok) {
-      setRecoverTokenId("");
-      setRecoverRecipient("");
-    }
-  };
-
   const fmt = (amount: bigint, decimals: number) => {
     const formatted = ethers.formatUnits(amount, decimals);
     return parseFloat(formatted).toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -104,8 +89,7 @@ export default function AdminBurnLab() {
           {!burnLabConfigured && (
             <div className="p-3 border border-amber-900/50 bg-amber-950/20 text-amber-400 text-xs">
               Burn Lab contract address isn&apos;t configured yet — set
-              NEXT_PUBLIC_BURN_LAB_CONTRACT_ADDRESS once the contract has been deployed (see
-              /hardhat/scripts/deploy-burnlab.js).
+              NEXT_PUBLIC_BURN_LAB_CONTRACT_ADDRESS once the contract has been deployed.
             </div>
           )}
 
@@ -280,44 +264,15 @@ export default function AdminBurnLab() {
             )}
           </div>
 
-          {/* NFT ESCROW */}
+          {/* BURN DESTINATION */}
           <div className="p-6 border border-zinc-800 bg-[#0f1115] space-y-4">
-            <h3 className="text-xs font-bold text-zinc-400 tracking-widest uppercase">NFT ESCROW</h3>
-            <div className="flex justify-between py-2 border-b border-zinc-900 text-xs">
-              <span className="text-zinc-500">HELD NFTS</span>
-              <span className="text-white font-bold">{heldNftCount}</span>
-            </div>
-          </div>
-
-          {/* ADMIN NFT RECOVERY */}
-          <div className="p-6 border border-zinc-800 bg-[#0f1115] space-y-4">
-            <h3 className="text-xs font-bold text-zinc-400 tracking-widest uppercase">ADMIN NFT RECOVERY</h3>
-            <p className="text-[10px] text-zinc-500">
-              NFT CONTRACT: Mini Brokers ({WEB3_CONFIG.NFT_CONTRACT_ADDRESS})
+            <h3 className="text-xs font-bold text-zinc-400 tracking-widest uppercase">BURN DESTINATION</h3>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              This Burn Lab contract never takes custody of NFTs. Every burned NFT is
+              transferred directly and permanently to the dead address
+              0x000000000000000000000000000000000000dEaD and cannot be recovered by anyone,
+              including this admin panel.
             </p>
-            <div className="space-y-3 max-w-md">
-              <input
-                type="text"
-                placeholder="NFT ID"
-                value={recoverTokenId}
-                onChange={(e) => setRecoverTokenId(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 p-2.5 text-xs text-white focus:border-[#CCFF00] outline-none"
-              />
-              <input
-                type="text"
-                placeholder="Recover to (0x... address)"
-                value={recoverRecipient}
-                onChange={(e) => setRecoverRecipient(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 p-2.5 text-xs text-white focus:border-[#CCFF00] outline-none"
-              />
-              <button
-                onClick={submitRecoverNFT}
-                disabled={!recoverTokenId || !ethers.isAddress(recoverRecipient) || !isBurnLabOwner}
-                className="px-6 py-2.5 bg-[#CCFF00] text-black font-bold text-xs disabled:opacity-30"
-              >
-                RECOVER NFT
-              </button>
-            </div>
           </div>
 
           {txState !== "IDLE" && (
