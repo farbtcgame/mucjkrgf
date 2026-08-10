@@ -26,14 +26,14 @@ export interface EIP1193Provider {
   [key: string]: any;
 }
 
-interface EIP6963ProviderInfo {
+export interface EIP6963ProviderInfo {
   uuid: string;
   name: string;
   icon: string;
   rdns: string;
 }
 
-interface EIP6963ProviderDetail {
+export interface EIP6963ProviderDetail {
   info: EIP6963ProviderInfo;
   provider: EIP1193Provider;
 }
@@ -49,8 +49,14 @@ export interface WalletOption {
   rdns?: string;
   accentColor: string;
   initials: string;
-  iconUrl: string;
   downloadUrl?: string;
+  /**
+   * Static official logo shown in the wallet modal. For injected wallets
+   * this is only a fallback — if the installed extension announces itself
+   * via EIP-6963 with its own `info.icon`, that live icon is preferred and
+   * takes priority over this URL.
+   */
+  logoUrl?: string;
 }
 
 // ==========================================================
@@ -65,8 +71,8 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "io.metamask",
     accentColor: "#F6851B",
     initials: "MM",
-    iconUrl: "https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg",
     downloadUrl: "https://metamask.io/download",
+    logoUrl: "https://www.google.com/s2/favicons?domain=metamask.io&sz=128",
   },
   {
     id: "rabby",
@@ -76,8 +82,8 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "io.rabby",
     accentColor: "#7084FF",
     initials: "RB",
-    iconUrl: "https://rabby.io/assets/logo.svg",
     downloadUrl: "https://rabby.io",
+    logoUrl: "https://www.google.com/s2/favicons?domain=rabby.io&sz=128",
   },
   {
     id: "coinbase",
@@ -87,8 +93,8 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "com.coinbase.wallet",
     accentColor: "#0052FF",
     initials: "CB",
-    iconUrl: "https://raw.githubusercontent.com/buildoors/coinbase-wallet-sdk/main/assets/symbol.svg",
     downloadUrl: "https://www.coinbase.com/wallet",
+    logoUrl: "https://www.google.com/s2/favicons?domain=coinbase.com&sz=128",
   },
   {
     id: "rainbow",
@@ -98,8 +104,8 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "me.rainbow",
     accentColor: "#001E59",
     initials: "RW",
-    iconUrl: "https://rainbow.me/assets/rainbow-mark.svg",
     downloadUrl: "https://rainbow.me",
+    logoUrl: "https://www.google.com/s2/favicons?domain=rainbow.me&sz=128",
   },
   {
     id: "trust",
@@ -109,8 +115,8 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "com.trustwallet.app",
     accentColor: "#3375BB",
     initials: "TW",
-    iconUrl: "https://trustwallet.com/assets/images/media/assets/trust_platform.svg",
     downloadUrl: "https://trustwallet.com",
+    logoUrl: "https://www.google.com/s2/favicons?domain=trustwallet.com&sz=128",
   },
   {
     id: "walletconnect",
@@ -119,7 +125,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     kind: "walletconnect",
     accentColor: "#3B99FC",
     initials: "WC",
-    iconUrl: "https://raw.githubusercontent.com/WalletConnect/walletconnect-assets/master/Logo/Blue/Logo.svg",
+    logoUrl: "https://www.google.com/s2/favicons?domain=walletconnect.com&sz=128",
   },
   {
     id: "injected",
@@ -128,7 +134,6 @@ export const WALLET_CATALOG: WalletOption[] = [
     kind: "injected",
     accentColor: "#71717A",
     initials: "BW",
-    iconUrl: "https://raw.githubusercontent.com/ethereum/ethereum-org-website/master/src/assets/eth-diamond-purple.svg",
   },
 ];
 
