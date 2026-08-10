@@ -78,7 +78,7 @@ export const WALLETCONNECT_CHAINS: { id: number; rpc: string }[] = [
 // $StonkBroker token — buy link (OpenSea)
 // ==========================================
 export const STONKBROKER_BUY_URL =
-  "https://opensea.io/collection/stonkbrokers-434284142/tokens?timeframe=seven_days";
+  "https://opensea.io/collection/mini-brokers";
 
 // ==========================================
 // IPFS gateway used for the rotating preview-card images on the mint page
