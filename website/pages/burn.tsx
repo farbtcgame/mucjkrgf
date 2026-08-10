@@ -281,9 +281,9 @@ export default function BurnLabPage() {
             {showConfirm && (
               <div className="p-3 border border-red-900/50 bg-red-950/20 text-red-300 text-[10px] space-y-2">
                 <p>
-                  This action transfers your selected NFTs into the Burn Lab contract. The NFTs
-                  are not permanently destroyed and may only be recovered by the contract
-                  administrator.
+                  This action permanently transfers your selected NFTs to the burn address
+                  (0x000000000000000000000000000000000000dEaD). This cannot be undone — the
+                  NFTs can never be recovered by anyone, including the contract administrator.
                 </p>
               </div>
             )}
