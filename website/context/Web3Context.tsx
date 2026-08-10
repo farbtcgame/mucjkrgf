@@ -1,12 +1,23 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { ethers } from "ethers";
-import { WEB3_CONFIG, WALLETCONNECT_PROJECT_ID } from "../config/web3";
+import { WEB3_CONFIG, WALLETCONNECT_PROJECT_ID, WALLETCONNECT_CHAINS } from "../config/web3";
 import NFT_ABI from "../abi/NFT.json";
 import ERC20_ABI from "../abi/ERC20.json";
 import BURN_LAB_ABI from "../abi/BurnLab.json";
 import ERC721_MINIMAL_ABI from "../abi/ERC721Minimal.json";
+import {
+  WALLET_CATALOG,
+  WalletOption,
+  EIP1193Provider,
+  requestInjectedProviders,
+  findInjectedByRdns,
+  getFallbackInjectedProvider,
+  connectWalletConnect,
+  disconnectProvider,
+  switchOrAddChain,
+} from "../lib/wallet";
 
 export type TxState =
   | "IDLE"
@@ -40,9 +51,16 @@ export interface BurnReward {
   availableCapacity: bigint;
 }
 
+const LAST_WALLET_STORAGE_KEY = "mb_last_wallet_id";
+
 interface Web3ContextType {
   account: string | null;
   chainId: number | null;
+  // Raw EIP-1193 provider of the currently connected wallet (MetaMask,
+  // Rabby, Coinbase Wallet, WalletConnect session, etc).
+  walletProvider: EIP1193Provider | null;
+  // ethers Signer for the connected account, kept in sync automatically.
+  signer: ethers.Signer | null;
   isCorrectNetwork: boolean;
   isOwner: boolean;
   txState: TxState;
@@ -62,7 +80,10 @@ interface Web3ContextType {
   contractFunctions: string[];
   walletConnectReady: boolean;
   connectWallet: () => Promise<void>;
+  disconnectWallet: () => Promise<void>;
   switchNetwork: () => Promise<void>;
+  // Alias of switchNetwork with an explicit name for Robinhood Chain.
+  switchToRobinhood: () => Promise<void>;
   mintNft: (quantity: number) => Promise<void>;
   refreshContractData: () => Promise<void>;
   callContractMethod: (methodName: string, args: any[]) => Promise<boolean>;
@@ -90,11 +111,21 @@ interface Web3ContextType {
 const Web3Context = createContext<Web3ContextType>({} as Web3ContextType);
 
 export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const walletConnectReady = !!WALLETCONNECT_PROJECT_ID;
+  // The new connection layer works for injected wallets regardless of
+  // whether a WalletConnect Project ID is configured, so the "ready" flag
+  // is no longer gated behind it (fixes the old behavior where the whole
+  // connect UI disappeared without a WalletConnect Project ID).
+  const walletConnectReady = true;
 
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
-  const [walletProvider, setWalletProvider] = useState<any>(null);
+  const [walletProvider, setWalletProvider] = useState<EIP1193Provider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+
+  // Wallet connection modal state
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [connectingWalletId, setConnectingWalletId] = useState<string | null>(null);
+  const [walletModalError, setWalletModalError] = useState<string | null>(null);
 
   const [txState, setTxState] = useState<TxState>("IDLE");
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -171,38 +202,283 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(interval);
   }, [refreshContractData]);
 
-  // Function to connect standard browser wallets (MetaMask / Window Ethereum)
-  const connectWallet = async () => {
-    try {
-      if (typeof window !== "undefined" && (window as any).ethereum) {
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        const network = await provider.getNetwork();
-        
-        setAccount(accounts[0]);
-        setChainId(Number(network.chainId));
-        setWalletProvider((window as any).ethereum);
-      } else {
-        alert("No crypto wallet found. Please install MetaMask or use a supported browser.");
-      }
-    } catch (err) {
-      console.error("Connection error:", err);
-      setErrorMessage("Failed to connect wallet");
-    }
-  };
+  // ==========================================================
+  // Wallet connection layer
+  // ==========================================================
+  const providerListenersRef = useRef<{
+    provider: EIP1193Provider;
+    onAccountsChanged: (accounts: string[]) => void;
+    onChainChanged: (id: string | number) => void;
+    onDisconnect: () => void;
+  } | null>(null);
 
-  const switchNetwork = async () => {
-    try {
-      if (walletProvider) {
-        const provider = new ethers.BrowserProvider(walletProvider);
-        await provider.send("wallet_switchEthereumChain", [
-          { chainId: "0x" + WEB3_CONFIG.CHAIN_ID.toString(16) },
-        ]);
+  const detachProviderListeners = useCallback(() => {
+    const current = providerListenersRef.current;
+    if (current?.provider?.removeListener) {
+      current.provider.removeListener("accountsChanged", current.onAccountsChanged);
+      current.provider.removeListener("chainChanged", current.onChainChanged);
+      current.provider.removeListener("disconnect", current.onDisconnect);
+    }
+    providerListenersRef.current = null;
+  }, []);
+
+  const disconnectWallet = useCallback(async () => {
+    const providerToClose = providerListenersRef.current?.provider ?? walletProvider;
+    detachProviderListeners();
+    await disconnectProvider(providerToClose);
+    setAccount(null);
+    setChainId(null);
+    setWalletProvider(null);
+    setSigner(null);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(LAST_WALLET_STORAGE_KEY);
+      } catch {
+        // ignore storage errors (private browsing, etc.)
       }
+    }
+  }, [walletProvider, detachProviderListeners]);
+
+  const attachProviderListeners = useCallback(
+    (provider: EIP1193Provider) => {
+      if (!provider?.on) return;
+
+      const onAccountsChanged = (accounts: string[]) => {
+        if (!accounts || accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          setAccount(accounts[0]);
+        }
+      };
+      const onChainChanged = (id: string | number) => {
+        const parsed = typeof id === "string" ? parseInt(id, 16) : Number(id);
+        setChainId(parsed);
+      };
+      const onDisconnect = () => {
+        disconnectWallet();
+      };
+
+      provider.on("accountsChanged", onAccountsChanged);
+      provider.on("chainChanged", onChainChanged);
+      provider.on("disconnect", onDisconnect);
+
+      providerListenersRef.current = { provider, onAccountsChanged, onChainChanged, onDisconnect };
+    },
+    [disconnectWallet]
+  );
+
+  useEffect(() => {
+    return () => {
+      detachProviderListeners();
+    };
+  }, [detachProviderListeners]);
+
+  const finalizeConnection = useCallback(
+    async (provider: EIP1193Provider, walletId: string, silent = false) => {
+      let accounts: string[] = [];
+      try {
+        accounts = silent
+          ? await provider.request({ method: "eth_accounts" })
+          : await provider.request({ method: "eth_requestAccounts" });
+      } catch (err: any) {
+        if (!silent && err?.code !== 4001) {
+          // Some wallets (namely certain WalletConnect sessions) don't
+          // support eth_requestAccounts after connect() — fall back.
+          accounts = await provider.request({ method: "eth_accounts" });
+        } else {
+          throw err;
+        }
+      }
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts returned by wallet.");
+      }
+
+      const browserProvider = new ethers.BrowserProvider(provider);
+      const network = await browserProvider.getNetwork();
+
+      detachProviderListeners();
+      attachProviderListeners(provider);
+
+      setAccount(accounts[0]);
+      setChainId(Number(network.chainId));
+      setWalletProvider(provider);
+
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(LAST_WALLET_STORAGE_KEY, walletId);
+        } catch {
+          // ignore storage errors
+        }
+      }
+
+      setIsWalletModalOpen(false);
+      setWalletModalError(null);
+    },
+    [attachProviderListeners, detachProviderListeners]
+  );
+
+  // Opens the wallet selection modal. Kept as the same function identity
+  // every existing component already calls.
+  const connectWallet = useCallback(async () => {
+    setWalletModalError(null);
+    setIsWalletModalOpen(true);
+  }, []);
+
+  const closeWalletModal = useCallback(() => {
+    if (connectingWalletId) return;
+    setIsWalletModalOpen(false);
+    setWalletModalError(null);
+  }, [connectingWalletId]);
+
+  const selectWallet = useCallback(
+    async (option: WalletOption) => {
+      setWalletModalError(null);
+      setConnectingWalletId(option.id);
+      try {
+        let provider: EIP1193Provider | null = null;
+
+        // 1. Try to find the wallet as an installed browser extension.
+        if (option.rdns) {
+          const injected = await requestInjectedProviders();
+          provider = findInjectedByRdns(injected, option.rdns);
+        }
+
+        // 2. Generic "Browser Wallet" option — use whatever is injected.
+        if (!provider && option.id === "injected") {
+          provider = getFallbackInjectedProvider();
+        }
+
+        // 3. Wallets that are WalletConnect-first (WalletConnect itself,
+        //    Rainbow, Trust Wallet) connect via WalletConnect directly if
+        //    no matching extension was found.
+        if (!provider && option.kind === "walletconnect") {
+          if (!WALLETCONNECT_PROJECT_ID) {
+            throw new Error(
+              "WalletConnect is not configured for this site yet. Try a browser extension wallet instead."
+            );
+          }
+          provider = await connectWalletConnect(WALLETCONNECT_PROJECT_ID, WALLETCONNECT_CHAINS);
+        }
+
+        // 4. Extension-first wallets (MetaMask, Rabby, Coinbase Wallet)
+        //    that weren't found installed — offer a WalletConnect fallback
+        //    so their mobile apps still work, otherwise point to install.
+        if (!provider && option.rdns && option.kind === "injected") {
+          if (WALLETCONNECT_PROJECT_ID) {
+            provider = await connectWalletConnect(WALLETCONNECT_PROJECT_ID, WALLETCONNECT_CHAINS);
+          } else if (option.downloadUrl && typeof window !== "undefined") {
+            window.open(option.downloadUrl, "_blank", "noopener,noreferrer");
+            throw new Error(`${option.name} was not detected. Opening the install page in a new tab.`);
+          }
+        }
+
+        if (!provider) {
+          throw new Error(`${option.name} was not detected in this browser.`);
+        }
+
+        await finalizeConnection(provider, option.id);
+      } catch (err: any) {
+        console.error("Wallet connection error:", err);
+        if (err?.code === 4001 || /reject/i.test(err?.message || "")) {
+          setWalletModalError("Connection request was rejected.");
+        } else {
+          setWalletModalError(err?.message || "Failed to connect wallet.");
+        }
+      } finally {
+        setConnectingWalletId(null);
+      }
+    },
+    [finalizeConnection]
+  );
+
+  // Silent reconnect on page load, using the last wallet the user
+  // successfully connected with. Never triggers a popup or QR modal —
+  // only reconnects if the wallet already authorizes this site.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let lastWalletId: string | null = null;
+    try {
+      lastWalletId = window.localStorage.getItem(LAST_WALLET_STORAGE_KEY);
+    } catch {
+      lastWalletId = null;
+    }
+    if (!lastWalletId) return;
+
+    const option = WALLET_CATALOG.find((w) => w.id === lastWalletId);
+    if (!option) return;
+
+    (async () => {
+      try {
+        let provider: EIP1193Provider | null = null;
+
+        if (option.rdns) {
+          const injected = await requestInjectedProviders();
+          provider = findInjectedByRdns(injected, option.rdns);
+        }
+        if (!provider && option.id === "injected") {
+          provider = getFallbackInjectedProvider();
+        }
+
+        // Never silently open WalletConnect — only reconnect wallets that
+        // are already sitting in the page (no popup needed).
+        if (!provider) return;
+
+        const accounts: string[] = await provider.request({ method: "eth_accounts" });
+        if (!accounts || accounts.length === 0) return;
+
+        await finalizeConnection(provider, option.id, true);
+      } catch (err) {
+        console.error("Silent wallet reconnect failed:", err);
+      }
+    })();
+    // Runs once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keeps `signer` in sync with the connected account/network. Purely
+  // additive — internal contract calls below still use getSigner()
+  // directly, unchanged from before.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!walletProvider || !account) {
+        setSigner(null);
+        return;
+      }
+      try {
+        const s = await getSigner();
+        if (!cancelled) setSigner(s);
+      } catch {
+        if (!cancelled) setSigner(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [walletProvider, account, chainId, getSigner]);
+
+  const switchNetwork = useCallback(async () => {
+    try {
+      if (!walletProvider) {
+        await connectWallet();
+        return;
+      }
+      await switchOrAddChain(walletProvider, {
+        chainId: WEB3_CONFIG.CHAIN_ID,
+        chainName: WEB3_CONFIG.CHAIN_NAME,
+        rpcUrl: WEB3_CONFIG.RPC_URL,
+        explorerUrl: WEB3_CONFIG.EXPLORER_URL,
+        currencySymbol: WEB3_CONFIG.CURRENCY_SYMBOL,
+      });
     } catch (err) {
+      console.error("Network switch error:", err);
       setErrorMessage("Failed to switch network in wallet");
     }
-  };
+  }, [walletProvider, connectWallet]);
+
+  // Explicit alias — same function, kept available under both names.
+  const switchToRobinhood = switchNetwork;
 
   const mintNft = async (quantity: number) => {
     if (!account) {
@@ -541,6 +817,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         account,
         chainId,
+        walletProvider,
+        signer,
         isCorrectNetwork: chainId === WEB3_CONFIG.CHAIN_ID,
         isOwner,
         txState,
@@ -560,7 +838,9 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         contractFunctions,
         walletConnectReady,
         connectWallet,
+        disconnectWallet,
         switchNetwork,
+        switchToRobinhood,
         mintNft,
         refreshContractData,
         callContractMethod,
@@ -586,6 +866,95 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       }}
     >
       {children}
+
+      {isWalletModalOpen && (
+        <div
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm font-mono"
+          onClick={closeWalletModal}
+        >
+          <div
+            className="w-full max-w-sm bg-[#0f1115] border border-zinc-800 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+              <div className="flex items-center space-x-2">
+                <span className="h-2 w-2 rounded-full bg-[#CCFF00] animate-pulse" />
+                <h2 className="text-sm font-bold text-white tracking-widest">CONNECT WALLET</h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeWalletModal}
+                className="text-zinc-500 hover:text-white text-lg leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Select a wallet to connect to {WEB3_CONFIG.CHAIN_NAME}.
+              </p>
+
+              {walletModalError && (
+                <div className="p-3 border border-red-900/50 bg-red-950/20 text-red-400 text-[11px]">
+                  {walletModalError}
+                </div>
+              )}
+
+              {!WALLETCONNECT_PROJECT_ID && (
+                <div className="p-3 border border-amber-900/50 bg-amber-950/20 text-amber-400 text-[11px]">
+                  WalletConnect Project ID not configured — QR / mobile connections are
+                  unavailable until NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is set. Browser extension
+                  wallets still work normally.
+                </div>
+              )}
+
+              <div className="space-y-2 max-h-80 overflow-y-auto no-scrollbar">
+                {WALLET_CATALOG.map((option) => {
+                  const isBusy = connectingWalletId === option.id;
+                  const isDisabled = connectingWalletId !== null && !isBusy;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => selectWallet(option)}
+                      disabled={isDisabled || isBusy}
+                      className="w-full flex items-center gap-3 p-3 border border-zinc-800 bg-zinc-950 hover:border-[#CCFF00]/50 hover:bg-zinc-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-left"
+                    >
+                      <span
+                        className="h-9 w-9 flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: option.accentColor }}
+                      >
+                        {option.initials}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-xs font-bold text-white tracking-wide">
+                          {option.name}
+                        </span>
+                        <span className="block text-[10px] text-zinc-500 truncate">
+                          {option.description}
+                        </span>
+                      </span>
+                      {isBusy ? (
+                        <span className="text-[10px] text-[#CCFF00] tracking-widest animate-pulse">
+                          ...
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600 text-xs">›</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="px-5 py-3 border-t border-zinc-800 text-[10px] text-zinc-600 text-center">
+              By connecting, you agree to the terms of the connected wallet provider.
+            </div>
+          </div>
+        </div>
+      )}
     </Web3Context.Provider>
   );
 };
