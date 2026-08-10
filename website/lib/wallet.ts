@@ -49,6 +49,7 @@ export interface WalletOption {
   rdns?: string;
   accentColor: string;
   initials: string;
+  iconUrl: string;
   downloadUrl?: string;
 }
 
@@ -64,6 +65,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "io.metamask",
     accentColor: "#F6851B",
     initials: "MM",
+    iconUrl: "https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg",
     downloadUrl: "https://metamask.io/download",
   },
   {
@@ -74,6 +76,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "io.rabby",
     accentColor: "#7084FF",
     initials: "RB",
+    iconUrl: "https://rabby.io/assets/logo.svg",
     downloadUrl: "https://rabby.io",
   },
   {
@@ -84,6 +87,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "com.coinbase.wallet",
     accentColor: "#0052FF",
     initials: "CB",
+    iconUrl: "https://raw.githubusercontent.com/buildoors/coinbase-wallet-sdk/main/assets/symbol.svg",
     downloadUrl: "https://www.coinbase.com/wallet",
   },
   {
@@ -94,6 +98,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "me.rainbow",
     accentColor: "#001E59",
     initials: "RW",
+    iconUrl: "https://rainbow.me/assets/rainbow-mark.svg",
     downloadUrl: "https://rainbow.me",
   },
   {
@@ -104,6 +109,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     rdns: "com.trustwallet.app",
     accentColor: "#3375BB",
     initials: "TW",
+    iconUrl: "https://trustwallet.com/assets/images/media/assets/trust_platform.svg",
     downloadUrl: "https://trustwallet.com",
   },
   {
@@ -113,6 +119,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     kind: "walletconnect",
     accentColor: "#3B99FC",
     initials: "WC",
+    iconUrl: "https://raw.githubusercontent.com/WalletConnect/walletconnect-assets/master/Logo/Blue/Logo.svg",
   },
   {
     id: "injected",
@@ -121,6 +128,7 @@ export const WALLET_CATALOG: WalletOption[] = [
     kind: "injected",
     accentColor: "#71717A",
     initials: "BW",
+    iconUrl: "https://raw.githubusercontent.com/ethereum/ethereum-org-website/master/src/assets/eth-diamond-purple.svg",
   },
 ];
 
