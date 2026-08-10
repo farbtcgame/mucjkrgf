@@ -11,7 +11,6 @@ import {
   WALLET_CATALOG,
   WalletOption,
   EIP1193Provider,
-  EIP6963ProviderDetail,
   requestInjectedProviders,
   findInjectedByRdns,
   getFallbackInjectedProvider,
@@ -19,42 +18,6 @@ import {
   disconnectProvider,
   switchOrAddChain,
 } from "../lib/wallet";
-
-// ==========================================================
-// Wallet modal icon — prefers a live EIP-6963 icon (announced by the
-// installed extension itself) and falls back to the catalog's static
-// logoUrl, and finally to the existing colored-initials box if neither
-// image loads. Same 36x36 box, spacing, and colors as before.
-// ==========================================================
-const WalletLogo: React.FC<{ option: WalletOption; src?: string }> = ({ option, src }) => {
-  const [imgFailed, setImgFailed] = useState(false);
-
-  if (!src || imgFailed) {
-    return (
-      <span
-        className="h-9 w-9 flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-        style={{ backgroundColor: option.accentColor }}
-      >
-        {option.initials}
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className="h-9 w-9 flex items-center justify-center shrink-0 p-1.5"
-      style={{ backgroundColor: option.accentColor }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={option.name}
-        className="w-full h-full object-contain"
-        onError={() => setImgFailed(true)}
-      />
-    </span>
-  );
-};
 
 export type TxState =
   | "IDLE"
@@ -131,12 +94,10 @@ interface Web3ContextType {
   isBurnLabOwner: boolean;
   burnRewards: BurnReward[];
   burnRewardsLoading: boolean;
-  heldNftCount: number;
   refreshBurnLabData: () => Promise<void>;
   checkBurnApproval: (ownerAddress: string) => Promise<boolean>;
   approveBurnLab: () => Promise<boolean>;
   executeBurn: (tokenIds: string[]) => Promise<boolean>;
-  recoverBurnNFT: (tokenId: string, recipient: string) => Promise<boolean>;
   addBurnReward: (token: string, amountPerNFTRaw: bigint) => Promise<boolean>;
   updateBurnRewardAmount: (token: string, newAmountPerNFTRaw: bigint) => Promise<boolean>;
   setBurnRewardActive: (token: string, active: boolean) => Promise<boolean>;
@@ -163,10 +124,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [connectingWalletId, setConnectingWalletId] = useState<string | null>(null);
   const [walletModalError, setWalletModalError] = useState<string | null>(null);
-  // Live wallet icons announced via EIP-6963 by installed extensions,
-  // keyed by rdns. Populated when the modal opens; takes priority over the
-  // catalog's static logoUrl when a match is found.
-  const [injectedWalletIcons, setInjectedWalletIcons] = useState<Record<string, string>>({});
 
   const [txState, setTxState] = useState<TxState>("IDLE");
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -371,28 +328,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsWalletModalOpen(false);
     setWalletModalError(null);
   }, [connectingWalletId]);
-
-  // Ask installed extensions to announce themselves so the modal can show
-  // each one's own live logo (EIP-6963 info.icon) instead of the static
-  // fallback. Purely additive — connection behavior is unchanged.
-  useEffect(() => {
-    if (!isWalletModalOpen) return;
-    let cancelled = false;
-    (async () => {
-      const injected: EIP6963ProviderDetail[] = await requestInjectedProviders();
-      if (cancelled) return;
-      const iconMap: Record<string, string> = {};
-      injected.forEach((detail) => {
-        if (detail.info?.rdns && detail.info?.icon) {
-          iconMap[detail.info.rdns] = detail.info.icon;
-        }
-      });
-      setInjectedWalletIcons(iconMap);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isWalletModalOpen]);
 
   const selectWallet = useCallback(
     async (option: WalletOption) => {
@@ -623,7 +558,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   );
   const [burnRewards, setBurnRewards] = useState<BurnReward[]>([]);
   const [burnRewardsLoading, setBurnRewardsLoading] = useState(false);
-  const [heldNftCount, setHeldNftCount] = useState(0);
 
   const isBurnLabOwner =
     !!account && account.toLowerCase() === burnLabOwnerAddress.toLowerCase();
@@ -653,13 +587,11 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       const provider = getReadProvider();
       const burnLab = new ethers.Contract(WEB3_CONFIG.BURN_LAB_CONTRACT_ADDRESS, BURN_LAB_ABI, provider);
 
-      const [ownr, count, held] = await Promise.all([
+      const [ownr, count] = await Promise.all([
         burnLab.owner().catch(() => "0x0000000000000000000000000000000000000000"),
         burnLab.getRewardsCount().catch(() => BigInt(0)),
-        burnLab.totalHeld().catch(() => BigInt(0)),
       ]);
       setBurnLabOwnerAddress(ownr);
-      setHeldNftCount(Number(held));
 
       const total = Number(count);
       const rewards: BurnReward[] = [];
@@ -830,9 +762,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const recoverBurnNFT = (tokenId: string, recipient: string) =>
-    callBurnLabMethod("recoverNFT", [WEB3_CONFIG.NFT_CONTRACT_ADDRESS, BigInt(tokenId), recipient]);
-
   const addBurnReward = (token: string, amountPerNFTRaw: bigint) =>
     callBurnLabMethod("addRewardToken", [token, amountPerNFTRaw]);
 
@@ -914,12 +843,10 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         isBurnLabOwner,
         burnRewards,
         burnRewardsLoading,
-        heldNftCount,
         refreshBurnLabData,
         checkBurnApproval,
         approveBurnLab,
         executeBurn,
-        recoverBurnNFT,
         addBurnReward,
         updateBurnRewardAmount,
         setBurnRewardActive,
@@ -985,10 +912,12 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
                       disabled={isDisabled || isBusy}
                       className="w-full flex items-center gap-3 p-3 border border-zinc-800 bg-zinc-950 hover:border-[#CCFF00]/50 hover:bg-zinc-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-left"
                     >
-                      <WalletLogo
-                        option={option}
-                        src={(option.rdns && injectedWalletIcons[option.rdns]) || option.logoUrl}
-                      />
+                      <span
+                        className="h-9 w-9 flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: option.accentColor }}
+                      >
+                        {option.initials}
+                      </span>
                       <span className="flex-1 min-w-0">
                         <span className="block text-xs font-bold text-white tracking-wide">
                           {option.name}
