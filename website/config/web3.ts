@@ -50,11 +50,23 @@ export const WEB3_CONFIG: Web3Config = {
 };
 
 // ==========================================
-// WalletConnect / Reown AppKit
+// WalletConnect
 // ==========================================
 // Get a free Project ID at https://cloud.reown.com (30 seconds, no cost).
 // Left blank on purpose — fill in .env.local as NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID.
 export const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "";
+
+// Chains offered to WalletConnect sessions (mobile wallets, QR connections).
+// The active chain is listed first so wallets default to it; the other
+// Robinhood network is offered as an optional chain so a session isn't
+// dropped if the user's wallet is set to the other network.
+export const WALLETCONNECT_CHAINS: { id: number; rpc: string }[] = [
+  { id: ACTIVE_CHAIN.CHAIN_ID, rpc: ACTIVE_CHAIN.RPC_URL },
+  {
+    id: ACTIVE_CHAIN.CHAIN_ID === ROBINHOOD_TESTNET.CHAIN_ID ? ROBINHOOD_MAINNET.CHAIN_ID : ROBINHOOD_TESTNET.CHAIN_ID,
+    rpc: ACTIVE_CHAIN.CHAIN_ID === ROBINHOOD_TESTNET.CHAIN_ID ? ROBINHOOD_MAINNET.RPC_URL : ROBINHOOD_TESTNET.RPC_URL,
+  },
+];
 
 // ==========================================
 // $StonkBroker token — buy link (OpenSea)
