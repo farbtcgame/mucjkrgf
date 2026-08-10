@@ -25,11 +25,16 @@ export const ROBINHOOD_MAINNET: ChainConfig = {
   CURRENCY_SYMBOL: "RH",
 };
 
-// Flip this to switch the whole site between testnet and mainnet at build time.
-// Can also be driven by NEXT_PUBLIC_NETWORK=mainnet|testnet at build/deploy time.
-const USE_MAINNET = process.env.NEXT_PUBLIC_NETWORK === "mainnet";
+// Production defaults to Robinhood Chain MAINNET. This does NOT depend on
+// NEXT_PUBLIC_NETWORK being set — if the env var is missing, unset, or set
+// to anything other than "testnet", the site resolves to mainnet. Testnet
+// is opt-in only, for local development, via NEXT_PUBLIC_NETWORK=testnet.
+const USE_TESTNET = process.env.NEXT_PUBLIC_NETWORK === "testnet";
 
-export const ACTIVE_CHAIN: ChainConfig = USE_MAINNET ? ROBINHOOD_MAINNET : ROBINHOOD_TESTNET;
+export const ACTIVE_CHAIN: ChainConfig = USE_TESTNET ? ROBINHOOD_TESTNET : ROBINHOOD_MAINNET;
+
+// Derived flag kept for the Alchemy NFT API base URL below.
+const USE_MAINNET = ACTIVE_CHAIN.CHAIN_ID === ROBINHOOD_MAINNET.CHAIN_ID;
 
 export interface Web3Config extends ChainConfig {
   NFT_CONTRACT_ADDRESS: string;
@@ -69,10 +74,10 @@ export const WALLETCONNECT_CHAINS: { id: number; rpc: string }[] = [
 ];
 
 // ==========================================
-// Mini Brokers NFT collection — buy link (OpenSea)
+// $StonkBroker token — buy link (OpenSea)
 // ==========================================
 export const STONKBROKER_BUY_URL =
-  "https://opensea.io/collection/mini-brokers";
+  "https://opensea.io/collection/stonkbrokers-434284142/tokens?timeframe=seven_days";
 
 // ==========================================
 // IPFS gateway used for the rotating preview-card images on the mint page
