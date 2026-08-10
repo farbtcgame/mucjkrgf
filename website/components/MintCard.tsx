@@ -177,14 +177,14 @@ export const MintCard: React.FC = () => {
           <span>{revealed ? "REVEALED" : "LIVE METADATA · IPFS"}</span>
         </div>
 
-        {/* Buy $StonkBroker */}
+        {/* Buy Mini Brokers */}
         <a
           href={STONKBROKER_BUY_URL}
           target="_blank"
           rel="noreferrer"
           className="w-full py-2.5 text-center bg-zinc-900 border border-[#CCFF00]/40 text-[#CCFF00] font-bold text-xs tracking-widest hover:bg-[#CCFF00]/10 transition-colors"
         >
-          BUY $StonkBroker ↗
+          BUY Mini Brokers ↗
         </a>
       </div>
 
